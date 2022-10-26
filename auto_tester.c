@@ -1,6 +1,6 @@
 /* Author: Adil Kasim
  * Date Created: Mon. Sep. 09, 2022
- * Last Edited: Mon. Oct. 17, 2022
+ * Last Edited: Tue. Oct. 25, 2022
  * */
 
 #include <stdio.h>
@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 /*  VERSION CONTROL */
-#define VERSION 2.0
+#define VERSION 3.1
 
 /* WINDOWS STUFF */
 #ifdef WIN32
@@ -21,8 +21,8 @@
 
 /* DEFINES */
 #define MAX_CHARS 255
-#define SUCCESS 0
-#define FAILURE -1
+#define SUCCESS 1
+#define FAILURE 0
 
 /* Colors */
 #define RED       "\033[1;91m"
@@ -92,7 +92,7 @@ void edit_cmp(int test_num, char *cmp) {
     }
 }
 
-int run_diff(int test_num, char *cmp, FILE *shell, char*opt) {
+int run_diff(int test_num, char *cmp, FILE *shell, char *opt) {
     int err = 0;
     /* RUN DIFF CHECKER */
     shell = popen(cmp, "r");
@@ -107,15 +107,16 @@ int run_diff(int test_num, char *cmp, FILE *shell, char*opt) {
         if (err > 0) { /* IF THE TEST FAILS */
             printf("%s%s%s%d%s%s%s", RED  , "<---------- Test: ", COLOR_END,
                    test_num, RED  , " failed ---------->\n", COLOR_END);
-            err = 0;
+                   err = FAILURE;
         } else { /* IF THE TEST PASSES */
             printf("%s%s%s%d%s%s%s", GREEN, "<---------- Test: ", COLOR_END,
                    test_num, GREEN, " passed ---------->\n", COLOR_END);
+                   err = SUCCESS;
         }
     }
     pclose(shell);
 
-    return SUCCESS;
+    return err;
 }
 
 int run_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
@@ -123,12 +124,7 @@ int run_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
     system(run);
 
     /* RUN DIFF CHECKER */
-    if (run_diff(test_num, cmp, shell, opt) == FAILURE) {
-        printf("%s%s%s\n", MAGENTA, "ERROR: diff CHECK COULD NOT BE RUN", COLOR_END); /* ERROR CODE HERE */
-        return FAILURE;
-    }
-
-    return SUCCESS;
+    return run_diff(test_num, cmp, shell, opt);
 }
 
 int in_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
@@ -141,12 +137,7 @@ int in_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
     }
     edit_cmp(test_num, cmp);
 
-    if (run_test(test_num, run, cmp, shell, opt) == FAILURE) {
-        printf("%s%s%s\n", MAGENTA, "ERROR: TEST COULD NOT BE RUN", COLOR_END); /* ERROR CODE HERE */
-        return FAILURE;
-    }
-
-    return SUCCESS;
+    return run_test(test_num, run, cmp, shell, opt);
 }
 
 int c_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
@@ -158,12 +149,7 @@ int c_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
     }
     edit_cmp(test_num, cmp);
 
-    if (run_test(test_num, run, cmp, shell, opt) == FAILURE) {
-        printf("%s%s%s\n", MAGENTA, "ERROR: TEST COULD NOT BE RUN", COLOR_END); /* ERROR CODE HERE */
-        return FAILURE;
-    }
-
-    return SUCCESS;
+    return run_test(test_num, run, cmp, shell, opt);
 }
 
 int c_make_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
@@ -176,12 +162,7 @@ int c_make_test(int test_num, char *run, char *cmp, FILE *shell, char *opt) {
     }
     edit_cmp(test_num, cmp);
 
-    if (run_test(test_num, run, cmp, shell, opt) == FAILURE) {
-        printf("%s%s%s\n", MAGENTA, "ERROR: TEST COULD NOT BE RUN", COLOR_END); /* ERROR CODE HERE */
-        return FAILURE;
-    }
-
-    return SUCCESS;
+    return run_test(test_num, run, cmp, shell, opt);
 }
 
 /* MAIN */
@@ -229,10 +210,7 @@ int main(int argc, char *argv[]) {
             } else { /* 'a.out' FILE Exists */
                 strlcpy(run, "a.out < public00.in > results", 30);
                 for (i = 1; i < num_tests + 1; i++) {
-                    if (in_test(i, run, cmp_test, shell, opt) == FAILURE) {
-                        printf("%s%s%s\n", MAGENTA, "ERROR: TEST NOT RUN", COLOR_END); /* ERROR CODE HERE */
-                        return 0;
-                    } else {
+                    if (in_test(i, run, cmp_test, shell, opt) == SUCCESS) {
                         num_right++;
                     }
                 }
@@ -242,22 +220,16 @@ int main(int argc, char *argv[]) {
             if (make() == SUCCESS) { /* Makefile Exits */
                 strlcpy(run, "public00 > results", 19);
                 for (i = 1; i < num_tests + 1; i++) {
-                    if (c_make_test(i, run, cmp_test, shell, opt) == FAILURE) {
-                        printf("%s%s%s\n", MAGENTA, "ERROR: TEST NOT RUN", COLOR_END); /* ERROR CODE HERE */
-                        return 0;
-                    } else {
+                    if (c_make_test(i, run, cmp_test, shell, opt) == SUCCESS) {
                         num_right++;
                     }
                 }
             } else { /* Makefile Does Not Exist */
                 strlcpy(run, "gcc public00.c ", 16);
-                strlcat(run, argv[1], strlen(argv[1]));
-                strlcat(run, "; a.out > results", 18);
+                strcat(run, argv[1]);
+                strcat(run, "; a.out > results");
                 for (i = 1; i < num_tests + 1; i++) {
-                    if (c_test(i, run, cmp_test, shell, opt) == FAILURE) {
-                        printf("%s%s%s\n", MAGENTA, "ERROR: TEST NOT RUN", COLOR_END); /* ERROR CODE HERE */
-                        return 0;
-                    } else {
+                    if (c_test(i, run, cmp_test, shell, opt) == SUCCESS) {
                         num_right++;
                     }
                 }
@@ -268,6 +240,7 @@ int main(int argc, char *argv[]) {
         }
     } else {
         printf("%s%s%s\n", MAGENTA, "INCORRECT NUMBER OF ARGUMENTS", COLOR_END); /* ERROR CODE HERE */
+        return 0;
     }
 
     if (num_right == 0) {
